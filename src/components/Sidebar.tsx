@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createBranch, deleteBranch, getAllBranches, mergeBranch } from '../lib/branches';
+import { branchProxy } from '../lib/proxy';
 import { Branch } from '../lib/db';
 import { GitBranch, Plus, Trash2, GitMerge, ChevronRight, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
@@ -43,7 +43,7 @@ export default function Sidebar() {
     }, [activeBranchId]);
 
     async function loadData() {
-        const branches = await getAllBranches();
+        const branches = await branchProxy.getAllBranches();
         setAllBranches(branches);
     }
 
@@ -64,14 +64,14 @@ export default function Sidebar() {
 
     async function handleNewBranch() {
         // New Root Branch
-        const b = await createBranch({ label: 'New Conversation' });
+        const b = await branchProxy.createBranch({ label: 'New Conversation' });
         loadData();
         setActiveBranchId(b.id);
     }
 
     async function handleDelete(e: React.MouseEvent, id: string) {
         e.stopPropagation();
-        await deleteBranch(id);
+        await branchProxy.deleteBranch(id);
         loadData();
         if (activeBranchId === id) setActiveBranchId(null);
     }
@@ -84,7 +84,7 @@ export default function Sidebar() {
         }
 
         // Merge source into parent
-        await mergeBranch(sourceBranch.id, sourceBranch.parentBranchId);
+        await branchProxy.mergeBranch(sourceBranch.id, sourceBranch.parentBranchId);
 
         // Switch view to parent to see result
         setActiveBranchId(sourceBranch.parentBranchId);
