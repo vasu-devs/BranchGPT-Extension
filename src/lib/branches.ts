@@ -30,6 +30,12 @@ export async function getRootBranches() {
         .toArray();
 }
 
+export async function getAllBranches() {
+    return db.branches
+        .filter(branch => !branch.isDeleted)
+        .toArray();
+}
+
 export async function deleteBranch(id: string) {
     // Soft delete
     await db.branches.update(id, { isDeleted: true });

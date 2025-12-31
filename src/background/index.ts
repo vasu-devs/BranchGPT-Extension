@@ -15,10 +15,18 @@ chrome.runtime.onMessage.addListener((request: { type: string; payload: any }, _
 async function handleFork(payload: { content: string, fullHistory?: { role: string, content: string }[], position: number }) {
     console.log('Forking w/ history size:', payload.fullHistory?.length || 0);
 
-    // 1. Create a new branch
+    // 1. Get active branch context
+    const storage = await chrome.storage.local.get(['activeBranchId']);
+    const parentBranchId = (storage.activeBranchId as string) || undefined;
+
+    // 2. Create a new branch
     const newBranch = await createBranch({
-        label: payload.content ? `${payload.content.slice(0, 15)}...` : 'Forked Branch'
+        label: payload.content ? `${payload.content.slice(0, 15)}...` : 'Forked Branch',
+        parentBranchId: parentBranchId
     });
+
+    // Update active branch to the new one immediately
+    await chrome.storage.local.set({ activeBranchId: newBranch.id });
 
     // 2. Import History (if provided)
     if (payload.fullHistory && payload.fullHistory.length > 0) {

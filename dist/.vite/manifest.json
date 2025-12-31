@@ -5,29 +5,29 @@
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
-  "_messages-BSmwHoPL.js": {
-    "file": "assets/messages-BSmwHoPL.js",
+  "_messages-BZZOhQZB.js": {
+    "file": "assets/messages-BZZOhQZB.js",
     "name": "messages"
   },
   "index.html": {
-    "file": "assets/index.html-CAk6RmyK.js",
+    "file": "assets/index.html-BkpSysjb.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_messages-BSmwHoPL.js"
+      "_messages-BZZOhQZB.js"
     ],
     "css": [
-      "assets/index-peqZUZNE.css"
+      "assets/index-Di3Hm50w.css"
     ]
   },
   "src/background/index.ts": {
-    "file": "assets/index.ts-DFrfeN5T.js",
+    "file": "assets/index.ts-8Ajygfo6.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
     "isEntry": true,
     "imports": [
-      "_messages-BSmwHoPL.js"
+      "_messages-BZZOhQZB.js"
     ]
   },
   "src/content/index.tsx": {
