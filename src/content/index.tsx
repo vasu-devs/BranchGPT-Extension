@@ -144,18 +144,26 @@ function init() {
                         fullHistory: history,
                         position: history.length
                     }
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        alert('Extension Error: ' + chrome.runtime.lastError.message);
+                        return;
+                    }
+                    if (response && response.success) {
+                        // Visual feedback
+                        const icon = btn.querySelector('svg');
+                        if (icon) icon.style.color = '#22c55e'; // green
+                        const span = btn.querySelector('span');
+                        if (span) span.innerText = 'Forked!';
+
+                        setTimeout(() => {
+                            if (icon) icon.style.color = 'currentColor';
+                            if (span) span.innerText = 'Fork';
+                        }, 2000);
+                    } else {
+                        alert('Fork Failed: ' + (response?.error || 'Unknown error'));
+                    }
                 });
-
-                // Visual feedback
-                const icon = btn.querySelector('svg');
-                if (icon) icon.style.color = '#22c55e'; // green
-                const span = btn.querySelector('span');
-                if (span) span.innerText = 'Forked!';
-
-                setTimeout(() => {
-                    if (icon) icon.style.color = 'currentColor';
-                    if (span) span.innerText = 'Fork';
-                }, 2000);
             };
 
             actionContainer.appendChild(btn);

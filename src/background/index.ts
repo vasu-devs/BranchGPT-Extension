@@ -7,7 +7,8 @@ chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 chrome.runtime.onMessage.addListener((request: { type: string; payload: any }, _sender, sendResponse) => {
     if (request.type === 'FORK_BRANCH') {
-        handleFork(request.payload);
+        handleFork(request.payload).then((res) => sendResponse(res)).catch(err => sendResponse({ success: false, error: err.message }));
+        return true;
     } else if (request.type === 'PROXY_GET_ALL_BRANCHES') {
         getAllBranches().then(sendResponse);
         return true;
@@ -94,4 +95,5 @@ async function handleFork(payload: { content: string, fullHistory?: { role: stri
     console.log('Created branch:', newBranch.id);
 
     broadcastRefresh();
+    return { success: true, branchId: newBranch.id };
 }
