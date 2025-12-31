@@ -39,11 +39,10 @@ function App() {
 
     async function handleDelete(e: React.MouseEvent, id: string) {
         e.stopPropagation();
-        if (confirm('Are you sure you want to prune this branch?')) {
-            await deleteBranch(id);
-            loadBranches();
-            if (activeBranchId === id) setActiveBranchId(null);
-        }
+        // Direct delete without confirmation
+        await deleteBranch(id);
+        loadBranches();
+        if (activeBranchId === id) setActiveBranchId(null);
     }
 
     async function handleMerge(e: React.MouseEvent, id: string) {
