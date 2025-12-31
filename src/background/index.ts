@@ -3,7 +3,11 @@
 import { createBranch, getAllBranches, deleteBranch, mergeBranch } from '../lib/branches';
 import { addMessage, getBranchMessages } from '../lib/messages';
 
-chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+// Safety check for Side Panel API (in case of differing browser support or context)
+if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+    chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true })
+        .catch(console.error);
+}
 
 chrome.runtime.onMessage.addListener((request: { type: string; payload: any }, _sender, sendResponse) => {
     if (request.type === 'FORK_BRANCH') {
