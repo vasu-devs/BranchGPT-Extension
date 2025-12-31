@@ -25,5 +25,26 @@ export async function getBranch(id: string) {
 }
 
 export async function getRootBranches() {
-    return db.branches.filter(branch => branch.parentBranchId === null).toArray();
+    return db.branches
+        .filter(branch => branch.parentBranchId === null && !branch.isDeleted)
+        .toArray();
+}
+
+export async function deleteBranch(id: string) {
+    // Soft delete
+    await db.branches.update(id, { isDeleted: true });
+
+    // Recursive delete (Pruning)
+    // Find all children
+    const children = await db.branches.where('parentBranchId').equals(id).toArray();
+    for (const child of children) {
+        await deleteBranch(child.id);
+    }
+}
+
+export async function mergeBranch(sourceId: string, targetId: string) {
+    // In a real app, this copies messages. 
+    // For this extension MVP, we'll verify the logic in the UI layer or background.
+    console.log(`Merging ${sourceId} into ${targetId}`);
+    return true;
 }

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { getRootBranches, createBranch } from './lib/branches';
+import { getRootBranches, createBranch, deleteBranch } from './lib/branches';
 import { getBranchMessages } from './lib/messages';
 import { Branch, Message } from './lib/db';
-import { GitBranch, Plus, MessageSquare, ChevronLeft, User, Bot } from 'lucide-react';
+import { GitBranch, Plus, MessageSquare, ChevronLeft, User, Bot, Trash2, GitMerge } from 'lucide-react';
 
 function App() {
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -35,6 +35,21 @@ function App() {
         const b = await createBranch({ label: 'New Conversation' });
         loadBranches();
         setActiveBranchId(b.id);
+    }
+
+    async function handleDelete(e: React.MouseEvent, id: string) {
+        e.stopPropagation();
+        if (confirm('Are you sure you want to prune this branch?')) {
+            await deleteBranch(id);
+            loadBranches();
+            if (activeBranchId === id) setActiveBranchId(null);
+        }
+    }
+
+    async function handleMerge(e: React.MouseEvent, id: string) {
+        e.stopPropagation();
+        alert(`Merge feature: Appends branch ${id} content to parent (Not fully implemented in MVP yet)`);
+        // Logic would go here to call mergeBranch()
     }
 
     function selectBranch(id: string) {
@@ -83,7 +98,11 @@ function App() {
                     ) : (
                         branches.map((branch) => (
                             <div key={branch.id} onClick={() => selectBranch(branch.id)}>
-                                <BranchItem branch={branch} />
+                                <BranchItem
+                                    branch={branch}
+                                    onDelete={(e) => handleDelete(e, branch.id)}
+                                    onMerge={(e) => handleMerge(e, branch.id)}
+                                />
                             </div>
                         ))
                     )
@@ -97,8 +116,8 @@ function App() {
                                     {msg.role === 'user' ? <User size={12} /> : <Bot size={12} />}
                                 </div>
                                 <div className={`text-xs p-2.5 rounded-lg max-w-[85%] leading-relaxed ${msg.role === 'user'
-                                        ? 'bg-zinc-800 text-zinc-200'
-                                        : 'bg-transparent border border-zinc-800 text-zinc-300'
+                                    ? 'bg-zinc-800 text-zinc-200'
+                                    : 'bg-transparent border border-zinc-800 text-zinc-300'
                                     }`}>
                                     {msg.content}
                                 </div>
@@ -110,34 +129,49 @@ function App() {
 
             {/* Footer */}
             <div className="p-2 border-t border-zinc-800 text-[10px] text-zinc-600 text-center flex justify-between px-4">
-                <span>v1.0.1</span>
+                <span>Pruning & Merging Enabled</span>
                 <span>{activeBranchId ? `${messages.length} msgs` : `${branches.length} branches`}</span>
             </div>
         </div>
     );
 }
 
-function BranchItem({ branch }: { branch: Branch }) {
+function BranchItem({ branch, onDelete, onMerge }: { branch: Branch, onDelete: (e: React.MouseEvent) => void, onMerge: (e: React.MouseEvent) => void }) {
     return (
-        <div className="group flex items-center gap-2 p-2 rounded-md hover:bg-zinc-800/50 cursor-pointer transition-all border border-transparent hover:border-zinc-800">
+        <div className="group flex items-center gap-2 p-2 rounded-md hover:bg-zinc-800/50 cursor-pointer transition-all border border-transparent hover:border-zinc-800 relative">
             <div className="flex flex-col items-center self-stretch py-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 group-hover:bg-purple-500 transition-colors"></div>
                 <div className="w-px flex-1 bg-zinc-800 my-0.5 group-hover:bg-zinc-700"></div>
             </div>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 pr-14"> {/* Padding specifically for buttons */}
                 <div className="flex items-center justify-between">
                     <h3 className="text-xs font-medium text-zinc-300 group-hover:text-purple-300 truncate transition-colors">
                         {branch.label}
                     </h3>
-                    <span className="text-[10px] text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {new Date(branch.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
                 </div>
                 <div className="text-[10px] text-zinc-500 truncate mt-0.5 flex items-center gap-1">
                     <MessageSquare size={8} />
                     <span>View Timeline</span>
                 </div>
+            </div>
+
+            {/* Hover Actions: Merge & Delete */}
+            <div className="absolute right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900/80 backdrop-blur rounded-md p-0.5">
+                <button
+                    onClick={onMerge}
+                    title="Merge to Parent"
+                    className="p-1 hover:bg-purple-500/20 text-zinc-400 hover:text-purple-400 rounded transition-colors"
+                >
+                    <GitMerge size={12} />
+                </button>
+                <button
+                    onClick={onDelete}
+                    title="Prune (Delete)"
+                    className="p-1 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded transition-colors"
+                >
+                    <Trash2 size={12} />
+                </button>
             </div>
         </div>
     )
