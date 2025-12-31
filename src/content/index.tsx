@@ -110,9 +110,18 @@ function init() {
                 e.preventDefault();
 
                 // Find native edit button
-                // It is usually hidden until hover. We might need to force hover?
-                // Or just querySelector it. ChatGPT often keeps it in DOM but hidden with CSS.
-                const nativeEditBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
+                // Strategy 1: exact aria-label
+                let nativeEditBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
+
+                // Strategy 2: Look for button with Pencil Icon SVG path
+                if (!nativeEditBtn) {
+                    const buttons = Array.from(el.querySelectorAll('button'));
+                    nativeEditBtn = buttons.find(b => b.innerHTML.includes('d="M18.5 2.5a2.121 2.121')) as HTMLButtonElement | null;
+                    // Alternate pencil path check (ChatGPT varies)
+                    if (!nativeEditBtn) {
+                        nativeEditBtn = buttons.find(b => b.innerHTML.includes('path') && b.innerHTML.includes('2.121')) as HTMLButtonElement | null;
+                    }
+                }
 
                 if (nativeEditBtn) {
                     console.log('[BranchGPT] Triggering native edit...');
@@ -123,20 +132,39 @@ function init() {
                     if (span) span.innerText = 'Editing...';
                     setTimeout(() => { if (span) span.innerText = 'Fork (Edit)'; }, 2000);
                 } else {
-                    // Try to force hover if button is missing?
-                    // Or alert user
-                    console.warn('[BranchGPT] Native edit button not found. Attempting to reveal...');
+                    console.warn('[BranchGPT] Edit button hidden. Force-revealing...');
+
+                    // Force reveal action bar
+                    // The action bar usually has opacity 0 or display none until hover.
+                    // We try to find the container of buttons and force style it.
+                    const actionBars = Array.from(el.querySelectorAll('div')).filter(d => d.querySelector('button'));
+                    // The one with the most buttons is likely the action bar
+                    const possibleActionBar = actionBars.sort((a, b) => b.querySelectorAll('button').length - a.querySelectorAll('button').length)[0];
+
+                    if (possibleActionBar) {
+                        possibleActionBar.style.opacity = '1';
+                        possibleActionBar.style.visibility = 'visible';
+                        possibleActionBar.style.display = 'flex';
+                    }
+
                     el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
                     el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 
                     setTimeout(() => {
-                        const retryBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
+                        // Retry Strategy 1 & 2
+                        let retryBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
+                        if (!retryBtn) {
+                            const buttons = Array.from(el.querySelectorAll('button'));
+                            retryBtn = buttons.find(b => b.innerHTML.includes('d="M18.5 2.5a2.121 2.121')) as HTMLButtonElement | null;
+                            if (!retryBtn) retryBtn = buttons.find(b => b.innerHTML.includes('path') && b.innerHTML.includes('2.121')) as HTMLButtonElement | null;
+                        }
+
                         if (retryBtn) {
                             retryBtn.click();
                         } else {
-                            alert('Could not find ChatGPT "Edit" button. Try hovering explicitly.');
+                            alert('Could not find ChatGPT "Edit" button even after forcing hover.\n\nPlease manually click the Pencil icon on the message.');
                         }
-                    }, 100);
+                    }, 300); // Increased timeout
                 }
             };
 
@@ -205,7 +233,7 @@ function init() {
     function injectPasteButton() {
         const inputArea = document.querySelector('textarea') || document.querySelector('#prompt-textarea');
         if (!inputArea) return;
-        
+
         const parent = inputArea.parentElement;
         if (!parent || parent.querySelector('.branch-gpt-paste-btn')) return;
 
@@ -230,26 +258,26 @@ function init() {
                 z-index: 999;
                 border: none;
             `;
-            
+
             pasteBtn.onclick = () => {
                 const prompt = `[MERGE CONTEXT]\nI am merging a side-branch into this conversation. Here is the summary of that branch:\n\n${result.pendingMerge}\n\n[INSTRUCTION]\nPlease integrate this context and continue.`;
-                
+
                 // Insert into textarea
                 const nativeTextArea = inputArea as HTMLTextAreaElement;
                 nativeTextArea.value += prompt;
                 nativeTextArea.focus();
                 nativeTextArea.dispatchEvent(new Event('input', { bubbles: true }));
-                
+
                 // Clear storage
                 chrome.storage.local.remove('pendingMerge');
                 pasteBtn.remove();
             };
 
             // Make parent relative relative if needed
-           if (window.getComputedStyle(parent).position === 'static') {
-               parent.style.position = 'relative'; 
-           }
-           parent.appendChild(pasteBtn);
+            if (window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+            }
+            parent.appendChild(pasteBtn);
         });
     }
 

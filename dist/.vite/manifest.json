@@ -14,7 +14,7 @@
     "name": "trash-2"
   },
   "index.html": {
-    "file": "assets/index.html-C7w-zMyC.js",
+    "file": "assets/index.html-D4r-H5ZY.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
@@ -23,11 +23,11 @@
       "_messages-Dgt2uc6m.js"
     ],
     "css": [
-      "assets/index-DEsVvUTU.css"
+      "assets/index-Be3TzNeb.css"
     ]
   },
   "index.tsx-loader.js": {
-    "file": "assets/index.tsx-loader-BC1KYwGf.js",
+    "file": "assets/index.tsx-loader-WCndPZ7C.js",
     "src": "index.tsx-loader.js"
   },
   "src/background/index.ts": {
@@ -40,7 +40,7 @@
     ]
   },
   "src/content/index.tsx": {
-    "file": "assets/index.tsx-DWO61MVt.js",
+    "file": "assets/index.tsx-DpG83FRX.js",
     "name": "index.tsx",
     "src": "src/content/index.tsx",
     "isEntry": true,
