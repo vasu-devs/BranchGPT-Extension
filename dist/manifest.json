@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.tsx-D99DVCqR.js"
+        "assets/index.tsx-loader-D62LRbak.js"
       ],
       "matches": [
         "https://chatgpt.com/*",
@@ -35,7 +35,9 @@
         "https://chatgpt.com/*"
       ],
       "resources": [
-        "assets/index.tsx-D99DVCqR.js"
+        "assets/user-C1cwYdab.js",
+        "assets/messages-Dgt2uc6m.js",
+        "assets/index.tsx-BaEAKByW.js"
       ],
       "use_dynamic_url": false
     }

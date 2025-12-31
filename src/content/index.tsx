@@ -1,21 +1,43 @@
+import { createRoot } from 'react-dom/client';
 import { ChatGPTDriver } from '../lib/drivers/chatgpt';
+import Sidebar from '../components/Sidebar';
+// @ts-ignore
+import css from '../index.css?inline';
 
 const drivers = [ChatGPTDriver];
 
 function init() {
     const driver = drivers.find(d => d.matches(window.location.href));
+    // Even if no driver matches for *scraping*, we might still want the sidebar? 
+    // But for now, let's stick to the logic.
     if (!driver) return;
 
     console.log(`BranchGPT: Active driver ${driver.name}`);
 
+    // --- 1. Inject Sidebar ---
+    const sidebarHost = document.createElement('div');
+    sidebarHost.id = 'branch-gpt-sidebar-host';
+    document.body.appendChild(sidebarHost);
+
+    const shadow = sidebarHost.attachShadow({ mode: 'open' });
+    
+    // Inject Styles
+    const styleEl = document.createElement('style');
+    styleEl.textContent = css;
+    shadow.appendChild(styleEl);
+
+    // Mount React
+    const rootEl = document.createElement('div');
+    shadow.appendChild(rootEl);
+    
+    // Create Root
+    createRoot(rootEl).render(<Sidebar />);
+
+
+    // --- 2. Inject Buttons Logic (Existing) ---
     function injectButtons() {
         // Robust selector strategy for ChatGPT
         const messageBlocks = document.querySelectorAll('[data-message-author-role]');
-
-        if (messageBlocks.length === 0) {
-            // Fallback for when attributes are missing
-            // OpenAI sometimes changes attributes
-        }
 
         messageBlocks.forEach((el, idx) => {
             // Find the text content container
@@ -47,7 +69,6 @@ function init() {
         `;
 
             // Premium styling: blending with dark mode but distinct
-            // Assuming dark mode for now (common for devs)
             btn.style.cssText = `
             display: flex;
             align-items: center;

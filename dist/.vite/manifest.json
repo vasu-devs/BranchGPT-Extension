@@ -5,35 +5,48 @@
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
-  "_messages-D69ailvd.js": {
-    "file": "assets/messages-D69ailvd.js",
+  "_messages-Dgt2uc6m.js": {
+    "file": "assets/messages-Dgt2uc6m.js",
     "name": "messages"
   },
+  "_user-C1cwYdab.js": {
+    "file": "assets/user-C1cwYdab.js",
+    "name": "user"
+  },
   "index.html": {
-    "file": "assets/index.html-DZ1t9pU-.js",
+    "file": "assets/index.html-D6kx-Jyx.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_messages-D69ailvd.js"
+      "_user-C1cwYdab.js",
+      "_messages-Dgt2uc6m.js"
     ],
     "css": [
-      "assets/index-BXMHM19N.css"
+      "assets/index-C4sqNbxl.css"
     ]
   },
+  "index.tsx-loader.js": {
+    "file": "assets/index.tsx-loader-D62LRbak.js",
+    "src": "index.tsx-loader.js"
+  },
   "src/background/index.ts": {
-    "file": "assets/index.ts-BFS4xKKo.js",
+    "file": "assets/index.ts-sRNDp7SC.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
     "isEntry": true,
     "imports": [
-      "_messages-D69ailvd.js"
+      "_messages-Dgt2uc6m.js"
     ]
   },
   "src/content/index.tsx": {
-    "file": "assets/index.tsx-D99DVCqR.js",
+    "file": "assets/index.tsx-BaEAKByW.js",
     "name": "index.tsx",
     "src": "src/content/index.tsx",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_user-C1cwYdab.js",
+      "_messages-Dgt2uc6m.js"
+    ]
   }
 }
