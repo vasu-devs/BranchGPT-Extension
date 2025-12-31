@@ -85,10 +85,10 @@ function init() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="6" y1="3" x2="6" y2="15"></line>
                     <circle cx="18" cy="6" r="3"></circle>
-                    <circle cx="6" cy="18" r="3"></circle>
-                    <path d="M18 9a9 9 0 0 1-9 9"></path>
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
                 </svg>
-                <span style="margin-left: 6px; font-size: 12px; font-weight: 500;">Fork</span>
+                <span style="margin-left: 6px; font-size: 12px; font-weight: 500;">Fork (Edit)</span>
             `;
 
             // Modern subtle styling
@@ -109,64 +109,82 @@ function init() {
                 e.stopPropagation();
                 e.preventDefault();
 
-                // 1. Capture History
-                // We must traverse ALL previous articles/blocks to build history
-                const history: { role: string, content: string }[] = [];
-                const allNodes = articles.length > 0 ? document.querySelectorAll('article') : document.querySelectorAll('[data-message-author-role]');
+                // Find native edit button
+                // It is usually hidden until hover. We might need to force hover?
+                // Or just querySelector it. ChatGPT often keeps it in DOM but hidden with CSS.
+                const nativeEditBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
 
+                if (nativeEditBtn) {
+                    console.log('[BranchGPT] Triggering native edit...');
+                    nativeEditBtn.click();
+
+                    // Visual feedback on our button
+                    const span = btn.querySelector('span');
+                    if (span) span.innerText = 'Editing...';
+                    setTimeout(() => { if (span) span.innerText = 'Fork (Edit)'; }, 2000);
+                } else {
+                    // Try to force hover if button is missing?
+                    // Or alert user
+                    console.warn('[BranchGPT] Native edit button not found. Attempting to reveal...');
+                    el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+                    el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+
+                    setTimeout(() => {
+                        const retryBtn = el.querySelector('button[aria-label="Edit message"]') as HTMLButtonElement | null;
+                        if (retryBtn) {
+                            retryBtn.click();
+                        } else {
+                            alert('Could not find ChatGPT "Edit" button. Try hovering explicitly.');
+                        }
+                    }, 100);
+                }
+            };
+
+            // --- Merge Button ---
+            const mergeBtn = document.createElement('button');
+            mergeBtn.innerHTML = `
+                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M5 12h14"/>  <!-- Simple Plus/Cross for now? No, let's use a Merge icon -->
+                    <path d="M6 3v18M18 9a9 9 0 0 1-9 9"/>
+                 </svg>
+                 <span style="margin-left: 6px; font-size: 12px; font-weight: 500;">Merge</span>
+            `;
+            mergeBtn.style.cssText = btn.style.cssText; // Reuse fork button styles
+            mergeBtn.style.marginLeft = '8px';
+            mergeBtn.title = "Copy this context to merge elsewhere";
+
+            mergeBtn.onmouseenter = btn.onmouseenter;
+            mergeBtn.onmouseleave = btn.onmouseleave;
+
+            mergeBtn.onclick = (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                // 1. Scrape Context
+                const context = [];
+                const allNodes = document.querySelectorAll('[data-message-author-role]');
                 for (let i = 0; i < allNodes.length; i++) {
-                    // Stop once we pass the current index (inclusive)
-                    // Note: 'idx' from forEach might not match 'i' if DOM changed. 
-                    // Safe approach: check if node is same or precedes current 'el'
                     const node = allNodes[i];
-
-                    // Get Content
-                    const txtEl = node.querySelector('.markdown') || node.querySelector('.whitespace-pre-wrap') || node.querySelector('.text-message-content');
-                    const txt = txtEl?.textContent || '';
-
-                    // Get Role
+                    const txtEl = node.querySelector('.markdown') || node.querySelector('.text-message-content');
                     const rEl = node.querySelector('[data-message-author-role]');
-                    const r = rEl?.getAttribute('data-message-author-role') || (node.querySelector('.whitespace-pre-wrap') ? 'user' : 'assistant');
-
-                    if (txt) {
-                        history.push({ role: r, content: txt });
-                    }
-
-                    if (node === el) break; // Reached current message
+                    const role = rEl?.getAttribute('data-message-author-role') || 'unknown';
+                    const text = txtEl?.textContent || '';
+                    if (text) context.push(`${role.toUpperCase()}: ${text.slice(0, 300)}...`); // Truncate for sanity
+                    if (node === el) break;
                 }
 
-                console.log('[BranchGPT] Forking with history length:', history.length);
+                const summary = context.join('\n\n');
 
-                chrome.runtime.sendMessage({
-                    type: 'FORK_BRANCH',
-                    payload: {
-                        content: contentEl.textContent?.slice(0, 100),
-                        fullHistory: history,
-                        position: history.length
-                    }
-                }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        alert('Extension Error: ' + chrome.runtime.lastError.message);
-                        return;
-                    }
-                    if (response && response.success) {
-                        // Visual feedback
-                        const icon = btn.querySelector('svg');
-                        if (icon) icon.style.color = '#22c55e'; // green
-                        const span = btn.querySelector('span');
-                        if (span) span.innerText = 'Forked!';
-
-                        setTimeout(() => {
-                            if (icon) icon.style.color = 'currentColor';
-                            if (span) span.innerText = 'Fork';
-                        }, 2000);
-                    } else {
-                        alert('Fork Failed: ' + (response?.error || 'Unknown error'));
-                    }
+                // 2. Save for Paste
+                chrome.storage.local.set({ pendingMerge: summary }, () => {
+                    const span = mergeBtn.querySelector('span');
+                    if (span) span.innerText = 'Copied!';
+                    setTimeout(() => { if (span) span.innerText = 'Merge'; }, 2000);
                 });
             };
 
             actionContainer.appendChild(btn);
+            actionContainer.appendChild(mergeBtn);
 
             // Try to append to the "interaction" bar if it exists (the row with copy/thumbs up)
             // It usually has explicit classes. If not found, append to content parent.
@@ -183,12 +201,70 @@ function init() {
         });
     }
 
+    // --- 3. Inject Paste Button (Input Area) ---
+    function injectPasteButton() {
+        const inputArea = document.querySelector('textarea') || document.querySelector('#prompt-textarea');
+        if (!inputArea) return;
+        
+        const parent = inputArea.parentElement;
+        if (!parent || parent.querySelector('.branch-gpt-paste-btn')) return;
+
+        // Check if we have a pending merge
+        chrome.storage.local.get(['pendingMerge'], (result) => {
+            if (!result.pendingMerge) return;
+
+            const pasteBtn = document.createElement('button');
+            pasteBtn.className = 'branch-gpt-paste-btn';
+            pasteBtn.innerText = '↳ Paste Merge Context';
+            pasteBtn.style.cssText = `
+                position: absolute;
+                bottom: 100%;
+                left: 0;
+                margin-bottom: 8px;
+                background: #10a37f;
+                color: white;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                cursor: pointer;
+                z-index: 999;
+                border: none;
+            `;
+            
+            pasteBtn.onclick = () => {
+                const prompt = `[MERGE CONTEXT]\nI am merging a side-branch into this conversation. Here is the summary of that branch:\n\n${result.pendingMerge}\n\n[INSTRUCTION]\nPlease integrate this context and continue.`;
+                
+                // Insert into textarea
+                const nativeTextArea = inputArea as HTMLTextAreaElement;
+                nativeTextArea.value += prompt;
+                nativeTextArea.focus();
+                nativeTextArea.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Clear storage
+                chrome.storage.local.remove('pendingMerge');
+                pasteBtn.remove();
+            };
+
+            // Make parent relative relative if needed
+           if (window.getComputedStyle(parent).position === 'static') {
+               parent.style.position = 'relative'; 
+           }
+           parent.appendChild(pasteBtn);
+        });
+    }
+
     // 1. Observer
-    const observer = new MutationObserver(() => injectButtons());
+    const observer = new MutationObserver(() => {
+        injectButtons();
+        injectPasteButton();
+    });
     observer.observe(document.body, { childList: true, subtree: true });
 
     // 2. Interval fallback (every 1s)
-    setInterval(injectButtons, 1000);
+    setInterval(() => {
+        injectButtons();
+        injectPasteButton();
+    }, 1000);
 }
 
 init();
