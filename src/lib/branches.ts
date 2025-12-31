@@ -49,8 +49,36 @@ export async function deleteBranch(id: string) {
 }
 
 export async function mergeBranch(sourceId: string, targetId: string) {
-    // In a real app, this copies messages. 
-    // For this extension MVP, we'll verify the logic in the UI layer or background.
-    console.log(`Merging ${sourceId} into ${targetId}`);
+    // 1. Get messages from source branch
+    const sourceMessages = await db.messages.where('branchId').equals(sourceId).sortBy('createdAt');
+    if (sourceMessages.length === 0) return false;
+
+    // 2. Append them to target branch
+    // We need to link the first message of source to the last message of target? 
+    // Or just dump them in. For MVP, we'll just add them as new messages in the target branch.
+    // Ideally, we'd add a "System" message saying "Merged from Branch X"
+
+    await db.messages.add({
+        id: generateId(),
+        branchId: targetId,
+        role: 'system',
+        content: `🔄 Merged content from branch: ${sourceId}`,
+        parentId: null, // simplification
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    });
+
+    for (const msg of sourceMessages) {
+        await db.messages.add({
+            id: generateId(), // New ID to avoid collision
+            branchId: targetId,
+            role: msg.role,
+            content: msg.content,
+            parentId: null, // simplification
+            createdAt: new Date().toISOString(), // effectively 'now'
+            updatedAt: new Date().toISOString()
+        });
+    }
+
     return true;
 }
