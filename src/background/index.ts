@@ -17,7 +17,7 @@ async function handleFork(payload: { content: string, position: number }) {
 
     // 1. Create a new branch
     const newBranch = await createBranch({
-        label: `Fork: ${payload.content.slice(0, 20)}...`
+        label: payload.content ? `${payload.content.slice(0, 15)}...` : 'Forked Branch'
     });
 
     // Dummy usage to satisfy linter/logic
@@ -28,4 +28,7 @@ async function handleFork(payload: { content: string, position: number }) {
     });
 
     console.log('Created branch:', newBranch.id);
+
+    // Notify UI to update
+    chrome.runtime.sendMessage({ type: 'REFRESH_BRANCHES' });
 }
