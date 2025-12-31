@@ -1,0 +1,1 @@
+import{a,b as n}from"./branches-BtHln9z3.js";async function s(e){const t={id:a(),branchId:e.branchId,role:e.role,content:e.content,parentId:e.parentId||null,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};return await n.messages.add(t),t}async function d(e){return n.messages.where("branchId").equals(e).sortBy("createdAt")}export{s as a,d as g};
