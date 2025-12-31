@@ -55,6 +55,12 @@ async function handleFork(payload: { content: string, fullHistory?: { role: stri
 
     console.log('Created branch:', newBranch.id);
 
-    // Notify UI
+    // Notify UI (Side Panel logic)
     chrome.runtime.sendMessage({ type: 'REFRESH_BRANCHES' });
+
+    // Notify Content Scripts (Injected Sidebar)
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs.length > 0 && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'REFRESH_BRANCHES' });
+    }
 }
