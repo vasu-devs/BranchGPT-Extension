@@ -10,7 +10,7 @@
     "name": "branches"
   },
   "index.html": {
-    "file": "assets/index.html-D7T8EHcg.js",
+    "file": "assets/index.html-BngRRQ66.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
@@ -18,7 +18,7 @@
       "_branches-D5BKXuc4.js"
     ],
     "css": [
-      "assets/index-U8OCFp3X.css"
+      "assets/index-DcFx_TmI.css"
     ]
   },
   "src/background/index.ts": {
@@ -31,7 +31,7 @@
     ]
   },
   "src/content/index.tsx": {
-    "file": "assets/index.tsx-DlVWM7i5.js",
+    "file": "assets/index.tsx-C9LzLB-Y.js",
     "name": "index.tsx",
     "src": "src/content/index.tsx",
     "isEntry": true
