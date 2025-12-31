@@ -1,42 +1,50 @@
 import { useState, useEffect } from 'react';
 import { branchProxy } from '../lib/proxy';
 import { Branch } from '../lib/db';
-import { GitBranch, Plus, Trash2, GitMerge, ChevronRight, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { GitBranch, Plus, Trash2, GitMerge, ChevronRight, ChevronDown, PanelLeftClose } from 'lucide-react';
 
 export default function Sidebar() {
     const [allBranches, setAllBranches] = useState<Branch[]>([]);
     const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [isOpen, setIsOpen] = useState(true);
+    const [viewMode, setViewMode] = useState<'current' | 'branch'>('branch'); // Visual toggle
 
     useEffect(() => {
-        // Init: Load from storage
         chrome.storage.local.get(['activeBranchId'], (result) => {
             if (result.activeBranchId) {
                 setActiveBranchId(result.activeBranchId as string);
+                expandToBranch(result.activeBranchId as string, allBranches);
             }
         });
 
         loadData();
 
-        // Listen for updates
-        // @ts-ignore
-        chrome.runtime.onMessage.addListener((request) => {
+        const listener = (request: any) => {
             if (request.type === 'REFRESH_BRANCHES') {
                 loadData();
                 chrome.storage.local.get(['activeBranchId'], (result) => {
                     if (result.activeBranchId) setActiveBranchId(result.activeBranchId as string);
                 });
             }
-        });
+        };
+
+        // @ts-ignore
+        chrome.runtime.onMessage.addListener(listener);
+        return () => chrome.runtime.onMessage.removeListener(listener);
     }, []);
 
-    // Effect: when activeBranchId changes, save it
+    // Re-run expansion when branches are loaded for the first time
+    useEffect(() => {
+        if (activeBranchId && allBranches.length > 0) {
+            expandToBranch(activeBranchId, allBranches);
+        }
+    }, [allBranches, activeBranchId]);
+
+    // Save active branch
     useEffect(() => {
         if (activeBranchId) {
             chrome.storage.local.set({ activeBranchId });
-            // Also expand path to this branch
-            expandToBranch(activeBranchId);
         } else {
             chrome.storage.local.remove('activeBranchId');
         }
@@ -47,23 +55,21 @@ export default function Sidebar() {
         setAllBranches(branches);
     }
 
-    function expandToBranch(branchId: string) {
-        // Find parents and expand them
+    function expandToBranch(branchId: string, branches: Branch[]) {
         setExpanded(prev => {
             const next = new Set(prev);
-            let current = allBranches.find(b => b.id === branchId);
+            let current = branches.find(b => b.id === branchId);
             while (current && current.parentBranchId) {
                 next.add(current.parentBranchId);
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 const parentId = current.parentBranchId!;
-                current = allBranches.find(b => b.id === parentId);
+                current = branches.find(b => b.id === parentId);
             }
             return next;
         });
     }
 
     async function handleNewBranch() {
-        // New Root Branch
         const b = await branchProxy.createBranch({ label: 'New Conversation' });
         loadData();
         setActiveBranchId(b.id);
@@ -71,24 +77,23 @@ export default function Sidebar() {
 
     async function handleDelete(e: React.MouseEvent, id: string) {
         e.stopPropagation();
-        await branchProxy.deleteBranch(id);
-        loadData();
-        if (activeBranchId === id) setActiveBranchId(null);
+        if (confirm('Are you sure you want to delete this branch and its children?')) {
+            await branchProxy.deleteBranch(id);
+            loadData();
+            if (activeBranchId === id) setActiveBranchId(null);
+        }
     }
 
     async function handleMerge(e: React.MouseEvent, sourceBranch: Branch) {
         e.stopPropagation();
         if (!sourceBranch.parentBranchId) {
-            alert('Cannot merge a root branch (no parent).');
+            alert('Cannot merge a root branch.');
             return;
         }
-
-        // Merge source into parent
-        await branchProxy.mergeBranch(sourceBranch.id, sourceBranch.parentBranchId);
-
-        // Switch view to parent to see result
-        setActiveBranchId(sourceBranch.parentBranchId);
-        alert('Merged successfully! Switched to parent branch.');
+        if (confirm(`Merge "${sourceBranch.label}" into parent?`)) {
+            await branchProxy.mergeBranch(sourceBranch.id, sourceBranch.parentBranchId);
+            setActiveBranchId(sourceBranch.parentBranchId);
+        }
     }
 
     function toggleExpand(e: React.MouseEvent, id: string) {
@@ -101,31 +106,56 @@ export default function Sidebar() {
         });
     }
 
-    // Recursive Tree Renderer
+    // Recursive Tree Renderer with L-connectors
+    // We pass `isLastChild` to determine if we should stop drawing the vertical line
     function renderTree(parentId: string | null = null, depth = 0) {
         const children = allBranches.filter(b => b.parentBranchId === parentId);
         if (children.length === 0) return null;
 
         return (
-            <div className={`flex flex-col ${depth > 0 ? 'ml-3 border-l border-zinc-800' : ''}`}>
-                {children.map(branch => {
+            <div className="flex flex-col">
+                {children.map((branch, index) => {
+                    const isLast = index === children.length - 1;
                     const hasChildren = allBranches.some(b => b.parentBranchId === branch.id);
                     const isExpanded = expanded.has(branch.id);
                     const isActive = activeBranchId === branch.id;
 
                     return (
                         <div key={branch.id} className="relative">
-                            <BranchItem
-                                branch={branch}
-                                isActive={isActive}
-                                hasChildren={hasChildren}
-                                isExpanded={isExpanded}
-                                onSelect={() => setActiveBranchId(branch.id)}
-                                onToggle={(e: React.MouseEvent) => toggleExpand(e, branch.id)}
-                                onDelete={(e: React.MouseEvent) => handleDelete(e, branch.id)}
-                                onMerge={(e: React.MouseEvent) => handleMerge(e, branch)}
-                            />
-                            {hasChildren && isExpanded && renderTree(branch.id, depth + 1)}
+                            {/* Branch Node */}
+                            <div className="flex items-stretch">
+                                {/* Indentation & Lines */}
+                                {depth > 0 && (
+                                    <div className="w-4 flex-shrink-0 relative">
+                                        {/* Vertical line from parent */}
+                                        <div className="absolute top-0 bottom-0 left-0 border-l border-zinc-700 h-full"></div>
+                                        {/* Horizontal curve/L-shape to node */}
+                                        <div className="absolute top-3 left-0 w-3 border-b border-zinc-700"></div>
+                                        {/* Cover vertical line if last child */}
+                                        {isLast && <div className="absolute top-3.5 bottom-0 left-[-1px] border-l-2 border-[#09090b] w-1"></div>}
+                                    </div>
+                                )}
+
+                                <div className={`flex-1 min-w-0 ${depth > 0 ? 'ml-0' : ''}`}>
+                                    <BranchItem
+                                        branch={branch}
+                                        isActive={isActive}
+                                        hasChildren={hasChildren}
+                                        isExpanded={isExpanded}
+                                        onSelect={() => setActiveBranchId(branch.id)}
+                                        onToggle={(e: React.MouseEvent) => toggleExpand(e, branch.id)}
+                                        onDelete={(e: React.MouseEvent) => handleDelete(e, branch.id)}
+                                        onMerge={(e: React.MouseEvent) => handleMerge(e, branch)}
+                                    />
+
+                                    {/* Children Container */}
+                                    {hasChildren && isExpanded && (
+                                        <div className="ml-2 pl-2 border-l border-zinc-700/50">
+                                            {renderTree(branch.id, depth + 1)}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     );
                 })}
@@ -137,65 +167,67 @@ export default function Sidebar() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed top-4 right-4 z-50 p-2 bg-[#09090b] text-zinc-400 rounded-md border border-zinc-800 hover:text-white shadow-lg"
-                title="Open BranchGPT"
+                className="fixed top-4 right-4 z-[9999] p-2 bg-[#09090b] text-zinc-400 rounded-md border border-zinc-800 hover:text-white shadow-lg transition-all"
             >
-                <PanelLeftOpen size={20} />
+                <GitBranch size={20} />
             </button>
         )
     }
 
     return (
-        <div className="fixed top-0 right-0 h-screen w-[320px] bg-[#09090b] text-zinc-100 font-sans flex flex-col border-l border-zinc-800 shadow-2xl z-[9999]">
+        <div className="fixed top-0 right-0 h-screen w-[350px] bg-[#09090b] text-zinc-100 font-sans flex flex-col border-l border-zinc-800 shadow-2xl z-[9999]">
             {/* Header */}
-            <header className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between bg-[#09090b]/95 backdrop-blur z-10 sticky top-0">
-                <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-purple-500/10 rounded-md">
-                        <GitBranch size={16} className="text-purple-400" />
-                    </div>
-                    <span className="font-semibold text-sm tracking-tight">BranchGPT</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={handleNewBranch}
-                        className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white"
-                        title="New Root Branch"
-                    >
-                        <Plus size={16} />
-                    </button>
-                    <button
-                        onClick={() => setIsOpen(false)}
-                        className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white"
-                        title="Close Sidebar"
-                    >
-                        <PanelLeftClose size={16} />
-                    </button>
-                </div>
+            <header className="px-4 py-4 border-b border-zinc-800 flex items-center justify-between bg-[#09090b] z-10">
+                <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white"
+                >
+                    <PanelLeftClose size={18} />
+                </button>
+
+                <h1 className="font-semibold text-base tracking-tight text-white">BranchGPT</h1>
+
+                <button
+                    onClick={handleNewBranch}
+                    className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-400 hover:text-white"
+                >
+                    <Plus size={18} />
+                </button>
             </header>
 
-            {/* Main Content: Tree View Only */}
-            <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-zinc-800">
-                <h3 className="text-[10px] uppercase font-bold text-zinc-500 mb-4 px-2 flex justify-between items-center">
-                    <span>Repository</span>
-                    <span className="text-[9px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded-full">{allBranches.length} Nodes</span>
-                </h3>
-                {allBranches.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-zinc-500 text-xs gap-2 border-2 border-dashed border-zinc-800/50 rounded-lg m-2">
-                        <GitBranch size={24} className="opacity-20" />
-                        <p>No active branches</p>
-                        <button onClick={handleNewBranch} className="text-purple-400 hover:underline">Start Branching</button>
-                    </div>
-                ) : (
-                    <div className="pl-1">
-                        {renderTree(null)}
-                    </div>
-                )}
+            {/* Tree View */}
+            <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-zinc-800 bg-[#09090b]">
+                {/* Search / Filter could go here */}
+
+                <div className="space-y-1">
+                    {allBranches.length === 0 ? (
+                        <div className="text-center mt-20 text-zinc-500 text-sm">
+                            <GitBranch className="mx-auto mb-2 opacity-20" size={32} />
+                            <p>No conversation branches yet.</p>
+                            <button onClick={handleNewBranch} className="text-blue-400 mt-2 hover:underline">Start New</button>
+                        </div>
+                    ) : (
+                        renderTree(null)
+                    )}
+                </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-1.5 border-t border-zinc-800 text-[10px] text-zinc-600 flex justify-between px-3">
-                <span>v0.1.0</span>
-                <span>Tree Mode</span>
+            {/* Footer with Toggle */}
+            <div className="p-3 border-t border-zinc-800 bg-[#09090b]">
+                <div className="flex bg-zinc-900/50 p-1 rounded-lg border border-zinc-800">
+                    <button
+                        onClick={() => setViewMode('current')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'current' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        Current
+                    </button>
+                    <button
+                        onClick={() => setViewMode('branch')}
+                        className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === 'branch' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    >
+                        Branch
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -203,40 +235,54 @@ export default function Sidebar() {
 
 function BranchItem({ branch, isActive, hasChildren, isExpanded, onSelect, onToggle, onDelete, onMerge }: any) {
     return (
-        <div className={`
-            group flex items-center gap-1.5 p-1.5 rounded-md cursor-pointer transition-all border 
-            ${isActive ? 'bg-purple-500/10 border-purple-500/20' : 'border-transparent hover:bg-zinc-800/50'}
-        `}>
-            {/* Toggler */}
-            <div
-                className={`p-0.5 rounded hover:bg-zinc-700/50 text-zinc-500 ${!hasChildren ? 'invisible' : ''}`}
-                onClick={onToggle}
-            >
-                {isExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+        <div
+            className={`
+                group flex items-center gap-2 px-2 py-2 my-0.5 rounded-md cursor-pointer transition-all border
+                ${isActive
+                    ? 'bg-zinc-900 border-zinc-800'
+                    : 'border-transparent hover:bg-zinc-900/50'
+                }
+            `}
+            onClick={onSelect}
+        >
+            {/* Folder Icon / Branch Icon */}
+            <div onClick={onToggle} className="text-zinc-500 hover:text-zinc-300 transition-colors">
+                {hasChildren ? (
+                    isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
+                ) : (
+                    <GitBranch size={14} className="opacity-50" />
+                )}
             </div>
 
-            {/* Label */}
-            <div className="flex-1 min-w-0" onClick={onSelect}>
-                <div className={`text-xs font-medium truncate ${isActive ? 'text-purple-300' : 'text-zinc-300'}`}>
+            {/* Text */}
+            <div className="flex-1 min-w-0 flex items-center justify-between">
+                <span className={`text-sm truncate ${isActive ? 'text-zinc-100 font-medium' : 'text-zinc-400'}`}>
                     {branch.label}
-                </div>
+                </span>
+
+                {/* HEAD Badge */}
+                {isActive && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-blue-500 text-[10px] font-bold text-white rounded shadow-sm flex-shrink-0">
+                        HEAD
+                    </span>
+                )}
             </div>
 
-            {/* Actions */}
-            <div className={`flex items-center gap-1 ${isActive || 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+            {/* Hover Actions */}
+            <div className={`flex items-center gap-1 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
                 <button
                     onClick={onMerge}
-                    title="Merge to Parent"
-                    className="p-1 hover:bg-blue-500/20 text-zinc-500 hover:text-blue-400 rounded"
+                    title="Merge"
+                    className="p-1 hover:bg-blue-500/10 text-zinc-500 hover:text-blue-400 rounded"
                 >
-                    <GitMerge size={10} />
+                    <GitMerge size={12} />
                 </button>
                 <button
                     onClick={onDelete}
-                    title="Prune"
-                    className="p-1 hover:bg-red-500/20 text-zinc-500 hover:text-red-400 rounded"
+                    title="Delete"
+                    className="p-1 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 rounded"
                 >
-                    <Trash2 size={10} />
+                    <Trash2 size={12} />
                 </button>
             </div>
         </div>
