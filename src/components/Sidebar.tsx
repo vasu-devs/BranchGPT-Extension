@@ -9,13 +9,16 @@ export default function Sidebar() {
     const [expanded, setExpanded] = useState<Set<string>>(new Set());
     const [isOpen, setIsOpen] = useState(true);
     const [viewMode, setViewMode] = useState<'current' | 'branch'>('branch'); // Visual toggle
+    const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
         chrome.storage.local.get(['activeBranchId'], (result) => {
             if (result.activeBranchId) {
+                console.log('Restoring active branch:', result.activeBranchId);
                 setActiveBranchId(result.activeBranchId as string);
                 expandToBranch(result.activeBranchId as string, allBranches);
             }
+            setIsInitialized(true);
         });
 
         loadData();
@@ -24,7 +27,10 @@ export default function Sidebar() {
             if (request.type === 'REFRESH_BRANCHES') {
                 loadData();
                 chrome.storage.local.get(['activeBranchId'], (result) => {
-                    if (result.activeBranchId) setActiveBranchId(result.activeBranchId as string);
+                    if (result.activeBranchId) {
+                        setActiveBranchId(result.activeBranchId as string);
+                        // Don't need to set initialized here as we are already running
+                    }
                 });
             }
         };
@@ -41,14 +47,16 @@ export default function Sidebar() {
         }
     }, [allBranches, activeBranchId]);
 
-    // Save active branch
+    // Save active branch (only after initialization)
     useEffect(() => {
+        if (!isInitialized) return;
+
         if (activeBranchId) {
             chrome.storage.local.set({ activeBranchId });
         } else {
             chrome.storage.local.remove('activeBranchId');
         }
-    }, [activeBranchId]);
+    }, [activeBranchId, isInitialized]);
 
     async function loadData() {
         const branches = await branchProxy.getAllBranches();
