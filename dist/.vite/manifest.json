@@ -5,33 +5,33 @@
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
-  "_branches-D5BKXuc4.js": {
-    "file": "assets/branches-D5BKXuc4.js",
-    "name": "branches"
+  "_messages-BW2ip3M7.js": {
+    "file": "assets/messages-BW2ip3M7.js",
+    "name": "messages"
   },
   "index.html": {
-    "file": "assets/index.html-BUMUX6Dz.js",
+    "file": "assets/index.html-Z3G92dLk.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_branches-D5BKXuc4.js"
+      "_messages-BW2ip3M7.js"
     ],
     "css": [
-      "assets/index-Dr0ttJxR.css"
+      "assets/index-C8dZQtSQ.css"
     ]
   },
   "src/background/index.ts": {
-    "file": "assets/index.ts-B1N5sNkL.js",
+    "file": "assets/index.ts-CnwJToni.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
     "isEntry": true,
     "imports": [
-      "_branches-D5BKXuc4.js"
+      "_messages-BW2ip3M7.js"
     ]
   },
   "src/content/index.tsx": {
-    "file": "assets/index.tsx-BVYNdIHB.js",
+    "file": "assets/index.tsx-D99DVCqR.js",
     "name": "index.tsx",
     "src": "src/content/index.tsx",
     "isEntry": true

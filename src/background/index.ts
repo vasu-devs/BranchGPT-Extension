@@ -12,23 +12,41 @@ chrome.runtime.onMessage.addListener((request: { type: string; payload: any }, _
     return true;
 });
 
-async function handleFork(payload: { content: string, position: number }) {
-    console.log('Forking at:', payload.content);
+async function handleFork(payload: { content: string, fullHistory?: { role: string, content: string }[], position: number }) {
+    console.log('Forking w/ history size:', payload.fullHistory?.length || 0);
 
     // 1. Create a new branch
     const newBranch = await createBranch({
         label: payload.content ? `${payload.content.slice(0, 15)}...` : 'Forked Branch'
     });
 
-    // Dummy usage to satisfy linter/logic
-    await addMessage({
-        branchId: newBranch.id,
-        role: 'system',
-        content: 'Forked from main thread'
-    });
+    // 2. Import History (if provided)
+    if (payload.fullHistory && payload.fullHistory.length > 0) {
+        let previousMessageId: string | undefined = undefined;
+
+        for (const msg of payload.fullHistory) {
+            // Normalize role
+            const role = (msg.role === 'user' || msg.role === 'assistant' || msg.role === 'system') ? msg.role : 'user';
+
+            const addedMsg = await addMessage({
+                branchId: newBranch.id,
+                role: role,
+                content: msg.content,
+                parentId: previousMessageId
+            });
+            previousMessageId = addedMsg.id;
+        }
+    } else {
+        // Fallback: Add just the fork point message if history failed for some reason
+        await addMessage({
+            branchId: newBranch.id,
+            role: 'system',
+            content: 'Fork created (no history captured)'
+        });
+    }
 
     console.log('Created branch:', newBranch.id);
 
-    // Notify UI to update
+    // Notify UI
     chrome.runtime.sendMessage({ type: 'REFRESH_BRANCHES' });
 }
