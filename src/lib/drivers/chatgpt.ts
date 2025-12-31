@@ -9,7 +9,7 @@ export const ChatGPTDriver: ChatDriver = {
 
     getMessages(): ScrapedMessage[] {
         // Selects generic ChatGPT message blocks (selectors might change)
-        const elements = document.querySelectorAll('.text-message-content');
+        const elements = document.querySelectorAll('[data-message-author-role]');
         const messages: ScrapedMessage[] = [];
 
         elements.forEach((el) => {
