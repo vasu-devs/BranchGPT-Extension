@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "BranchGPT",
+  "version": "1.0.0",
+  "description": "Convert any chatbot into a branching tree of conversations.",
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "sidePanel"
+  ],
+  "content_scripts": [
+    {
+      "js": ["src/content/index.tsx"],
+      "matches": ["https://chatgpt.com/*", "https://*.chatgpt.com/*"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  }
+}
